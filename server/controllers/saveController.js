@@ -1,10 +1,6 @@
 import mongoose from "mongoose";
-import Listing from "../models/Listing.js";
 import Interaction from "../models/Interaction.js";
-import { withImageUrl } from "./listingController.js";
-
-const listingExists = async (id) =>
-  mongoose.isValidObjectId(id) && Boolean(await Listing.exists({ _id: id }));
+import { withImageUrl, listingExists } from "./listingController.js";
 
 // POST /api/listings/:id/save - idempotent, so a double click still leaves one save
 export const saveListing = async (req, res) => {

@@ -5,6 +5,7 @@ import { connectDB } from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import listingRoutes from "./routes/listingRoutes.js";
+import interactionRoutes from "./routes/interactionRoutes.js";
 
 const app = express();
 
@@ -16,6 +17,7 @@ app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 app.use("/api", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/listings", listingRoutes);
+app.use("/api/interactions", interactionRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);
