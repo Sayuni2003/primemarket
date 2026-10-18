@@ -3,7 +3,7 @@ import Listing, { LISTING_CATEGORIES } from "../models/Listing.js";
 import { getImageUrl } from "../config/s3.js";
 
 // Swap the stored S3 key for a short-lived URL the browser can load
-const withImageUrl = async ({ imageKey, ...listing }) => ({
+export const withImageUrl = async ({ imageKey, ...listing }) => ({
   ...listing,
   imageUrl: await getImageUrl(imageKey),
 });
