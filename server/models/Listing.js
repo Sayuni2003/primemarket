@@ -1,6 +1,11 @@
 import mongoose from "mongoose";
 
-export const LISTING_CATEGORIES = ["property", "vehicle", "electronics", "furniture", "other"];
+export const LISTING_CATEGORIES = [
+  "property",
+  "vehicle",
+  "electronics",
+  "furniture",
+];
 
 // Category-specific details, e.g. { key: "bedrooms", value: 3 } or { key: "fuelType", value: "petrol" }
 const attributeSchema = new mongoose.Schema(
@@ -8,7 +13,7 @@ const attributeSchema = new mongoose.Schema(
     key: { type: String, required: true, trim: true },
     value: { type: mongoose.Schema.Types.Mixed, required: true },
   },
-  { _id: false }
+  { _id: false },
 );
 
 // Seller details are embedded so listings can be shown without a lookup
@@ -18,7 +23,7 @@ const sellerSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     phoneNo: { type: String, required: true, trim: true },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const listingSchema = new mongoose.Schema(
@@ -32,7 +37,7 @@ const listingSchema = new mongoose.Schema(
     imageKey: { type: String, trim: true },
     seller: { type: sellerSchema, required: true },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 listingSchema.index({ category: 1, price: 1 });
