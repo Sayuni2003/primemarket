@@ -2,84 +2,89 @@
 
 ## Recommendation logic
 
-`GET /api/recommendations?userId=…` returns `{ userId, isNewUser, forYou, others }`.
-All weights live in [`server/config/recommendation.js`](server/config/recommendation.js); the ranking itself is a set of pure functions in [`server/services/recommendationScoring.js`](server/services/recommendationScoring.js).
+`GET /api/recommendations?userId=…` returns `{ userId, isNewUser, message, recommendations, others }`.
+It is content-based filtering with weighted interactions: listings similar to what the user viewed, saved or contacted a seller about rank first.
+All weights, caps and matching attributes live in [`server/config/recommendation.js`](server/config/recommendation.js); the scoring itself is a set of pure functions (no database calls) in [`server/services/recommendationScoring.js`](server/services/recommendationScoring.js).
 
-### 1. Action weights
+### 1. Interaction weights and caps
 
-| Action | Weight | Why |
-|---|---|---|
-| `view` | 1 | Curiosity: the user opened the listing |
-| `save` | 3 | Interest: they want to come back to it |
-| `contact_seller` | 5 | Strong intent: they're ready to talk about buying |
+| Interaction | Weight | Max counted per listing | Why |
+|---|---|---|---|
+| `view` | 1 | 3 | Initial interest |
+| `save` | 3 | 1 | Stronger interest: they want to come back to it |
+| `contact_seller` | 5 | 2 | Purchase or enquiry intent |
 
-### 2. Tags: two attributes per category
-
-Each listing is turned into tags, and two listings are "similar" when they share tags.
-
-| Category | Primary (most specific) | Secondary (supporting detail) |
-|---|---|---|
-| vehicle | `make` | `fuelType` |
-| property | `propertyType` | `bedrooms` |
-| electronics | `brand` | `type` |
-| furniture | `type` | `material` |
-
-Every listing also gets a `category:<category>` tag and a `location:<location>` tag. Attribute tags are prefixed with the category (`vehicle:make:toyota`), so `electronics:type:laptop` can't collide with `furniture:type:sofa`. Values are trimmed and lowercased. A missing attribute (land has no bedrooms) is simply skipped.
-
-Every category gets the **same number of tags** on purpose: if vehicles had five tags and furniture two, vehicles would win simply because they have more chances to match.
-
-### 3. Scoring
-
-1. **Points per touched listing**: the sum of the weights of the *distinct* actions on it.
-2. **Profile**: each touched listing adds its points to every one of its tags. It is rebuilt on every request and never stored, so it can't get out of sync with the interactions.
-3. **Score** of an untouched listing:
+Every click is stored as its own document, but repeats are capped per user, listing and type, so refreshing a page can't push one listing to dominate the feed. A listing's points are:
 
 ```
-score = Σ over the listing's tags of  profile[tag] × tagWeight
-tagWeight: category ×1, primary ×2, secondary ×1, location ×1
+points = Σ over types of  min(count, cap) × weight
 ```
 
-The primary attribute counts **×2** because it's the most specific signal: "Toyota" says much more about what someone wants than "vehicle".
+5 views of one listing = min(5, 3) × 1 = **3** points, not 5. The most one listing can earn is 3 + 3 + 10 = 16.
 
-`forYou` holds the top 8 untouched listings with a score above 0. Each one has a `breakdown` of contributing tags and a `reason` taken from the biggest contributor, e.g. "Because you showed interest in Toyota", "Because you've been looking in Colombo", "Because you've been browsing Vehicles". Equal scores keep the default feed order.
+### 2. Preference profile
 
-### 4. Repeated clicks
+The backend loads only this user's interactions, then the listings they point to (interactions whose listing was deleted are ignored). Each interacted listing adds its points to three maps:
 
-Every click is stored as its own document (views and contacts are an activity log; saves are unique per user + listing). For scoring, each action type counts **once per listing**, so a listing can earn at most 1 + 3 + 5 = **9** points. 10 views + 1 contact = 6, not 15, and refreshing a page can't push one listing to dominate the feed.
+- **Category**, e.g. `property`
+- **Location**, e.g. `colombo`
+- **Matching attributes** for its category, keyed `category:key:value`, e.g. `vehicle:make:toyota`
 
-### 5. Already-interacted listings
+| Category | Matching attributes |
+|---|---|
+| property | `propertyType`, `bedrooms` |
+| vehicle | `make`, `fuelType` |
+| electronics | `brand`, `type` |
+| furniture | `type`, `material` |
 
-They're excluded from `forYou` (recommending something you've already contacted adds nothing) and shown at the end of `others` with `interacted` set to their strongest action (`contact_seller`, `save` or `view`) so the UI can show a badge like "Contacted".
+Keys and locations are trimmed and lowercased, so "Toyota " and "toyota" match. An attribute a listing doesn't have (land has no bedrooms) is simply skipped. Price isn't used yet. The profile is rebuilt on every request and never stored, so it can't get out of sync with the interactions.
 
-### 6. Cold start
+### 3. Scoring and ranking
 
-A user with no interactions (or whose interactions only point to deleted listings) gets `isNewUser: true`, `forYou: []` and a category-mixed default feed: newest first within each category, then interleaved vehicle → property → electronics → furniture → vehicle… It depends only on listing data, never on other users' activity, so one user's clicks can never change another user's feed.
+Candidates are the listings the user hasn't interacted with (`_id: { $nin: interactedIds }`). Each one scores:
 
-### 7. Worked example
+```
+score = category points + location points + Σ points of each matching attribute
+```
 
-The user viewed and contacted the seller of a **Toyota Aqua** (Colombo, toyota, hybrid) → 1 + 5 = **6 points**, and viewed a **Honda Fit** (Colombo, honda, hybrid) → **1 point**.
+Every match adds a reason, e.g. "Matches preferred category: property", "Matches preferred location: Colombo", "Matches preferred make: toyota". Candidates are sorted by score (highest first), then by `_id`, so the order is the same on every request. The score is a ranking value, not a percentage.
 
-Profile: `category:vehicle` 7, `vehicle:make:toyota` 6, `vehicle:make:honda` 1, `vehicle:fuelType:hybrid` 7, `location:colombo` 7.
+### 4. The response
 
-| Listing | Category ×1 | Make ×2 | Fuel ×1 | Location ×1 | Score |
-|---|---|---|---|---|---|
-| Toyota Prius, Kandy, hybrid | 7 | 12 | 7 | 0 | **26** |
-| Toyota Axio, Gampaha, hybrid | 7 | 12 | 7 | 0 | **26** |
-| Suzuki Wagon R, Colombo, hybrid | 7 | 0 | 7 | 7 | **21** |
-| Toyota Vitz, Nugegoda, petrol | 7 | 12 | 0 | 0 | **19** |
-| Honda Vezel, Negombo, hybrid | 7 | 2 | 7 | 0 | **16** |
-| Honda Dio, Dehiwala, petrol | 7 | 2 | 0 | 0 | **9** |
-| Apartment, Colombo | 0 | 0 | 0 | 7 | **7** |
-| House, Kandy | 0 | 0 | 0 | 0 | **0** (not in forYou) |
+- `recommendations`: up to 8 candidates with a score above 0, each `{ listing, score, reasons }`. A score of 0 matches nothing the user has shown interest in, so it isn't recommended.
+- `others`: every other listing as `{ listing }`, in default feed order, with the listings the user already interacted with at the end. Together the two lists show every listing exactly once.
+- `message`: explains an empty `recommendations` (no activity yet, nothing matches, or every listing already interacted with); otherwise `null`.
+
+### 5. Cold start
+
+A user with no interactions (or whose interactions only point to deleted listings) gets `isNewUser: true`, `recommendations: []` and the full default feed in `others`: newest first within each category, then interleaved vehicle → property → electronics → furniture → vehicle…, with `_id` (descending) breaking ties. The same order is used for `others` whenever nothing scores above 0. It depends only on listing data, never on other users' activity, so one user's clicks can never change another user's feed.
+
+### 6. Worked example
+
+The user viewed an apartment in Colombo (1 point), saved another apartment in Colombo (3 points) and viewed a Toyota hybrid in Kandy (1 point).
+
+| Profile | Value | Points |
+|---|---|---|
+| Category | property / vehicle | 4 / 1 |
+| Location | colombo / kandy | 4 / 1 |
+| Attribute | `property:propertytype:apartment`, `property:bedrooms:2` | 4 each |
+| Attribute | `vehicle:make:toyota`, `vehicle:fueltype:hybrid` | 1 each |
+
+| Candidate | Category | Location | Attributes | Score |
+|---|---|---|---|---|
+| Apartment, Dehiwala, 2 bedrooms | 4 | 0 | 4 + 4 | **12** |
+| Toyota hybrid, Colombo | 1 | 4 | 1 + 1 | **7** |
+| House, Kandy, 4 bedrooms | 4 | 1 | 0 | **5** |
 
 This exact example is checked by the unit tests.
 
-### 8. Trade-offs and possible improvements
+### 7. Trade-offs and possible improvements
 
 - **No recency decay**: an interaction from last month counts as much as one from today. `createdAt` on interactions could be used to fade older ones.
-- **Price isn't used**: price ranges (e.g. `vehicle:price:5-10m`) could be added as another tag.
-- **Weights are hand-picked**: they could instead be calculated from how rare each tag is (IDF), so a rare match counts more than a common one.
-- **Recomputed per request**: every listing's tags and score are rebuilt on each request. That's fine at this size but would need caching or precomputed tags for thousands of listings.
+- **Price isn't used**: price ranges could be added as another profile dimension.
+- **Weights and caps are hand-picked**: they can be tuned after testing with real usage.
+- **Category weighs a lot**: the same points go to category, location and each attribute, so a broad category match counts as much as a specific one like make.
+- **Recomputed per request**: every candidate is scored on each request. That's fine at this size but would need caching for thousands of listings.
 
 ## AWS S3 setup
 

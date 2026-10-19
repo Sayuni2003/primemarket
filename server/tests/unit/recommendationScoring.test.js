@@ -1,159 +1,154 @@
 import {
-  getListingPoints,
-  getListingTags,
+  getInteractionPoints,
   buildProfile,
-  scoreListing,
+  scoreCandidate,
+  rankCandidates,
   getDefaultOrder,
-  rankForUser,
+  recommendForUser,
 } from "../../services/recommendationScoring.js";
-import { FOR_YOU_LIMIT } from "../../config/recommendation.js";
+import { RECOMMENDATION_LIMIT } from "../../config/recommendation.js";
 import { makeListing } from "../helpers/fixtures.js";
 
 // Pure functions only care about _id, so readable string ids are fine here
-const vehicle = (_id, title, location, make, fuelType, daysAgo) =>
-  makeListing({ _id, title, category: "vehicle", location, attributes: { make, fuelType }, daysAgo });
+const property = (_id, location, propertyType, bedrooms, daysAgo = 0) =>
+  makeListing({ _id, title: _id, category: "property", location, attributes: { propertyType, bedrooms }, daysAgo });
+const vehicle = (_id, location, make, fuelType, daysAgo = 0) =>
+  makeListing({ _id, title: _id, category: "vehicle", location, attributes: { make, fuelType }, daysAgo });
 
-// The worked example from the README
-const aqua = vehicle("aqua", "Toyota Aqua", "Colombo", "toyota", "hybrid", 0);
-const fit = vehicle("fit", "Honda Fit", "Colombo", "honda", "hybrid", 1);
-const prius = vehicle("prius", "Toyota Prius", "Kandy", "toyota", "hybrid", 2);
-const axio = vehicle("axio", "Toyota Axio", "Gampaha", "toyota", "hybrid", 3);
-const wagonR = vehicle("wagonR", "Suzuki Wagon R", "Colombo", "suzuki", "hybrid", 4);
-const vitz = vehicle("vitz", "Toyota Vitz", "Nugegoda", "toyota", "petrol", 5);
-const vezel = vehicle("vezel", "Honda Vezel", "Negombo", "honda", "hybrid", 6);
-const dio = vehicle("dio", "Honda Dio", "Dehiwala", "honda", "petrol", 7);
-const apartment = makeListing({
-  _id: "apartment", title: "Apartment", category: "property", location: "Colombo",
-  attributes: { propertyType: "apartment", bedrooms: 2 }, daysAgo: 0,
+// Plain objects are easier to compare than Maps
+const profileAsObject = (profile) => ({
+  categories: Object.fromEntries(profile.categories),
+  locations: Object.fromEntries(profile.locations),
+  attributes: Object.fromEntries(profile.attributes),
 });
-const house = makeListing({
-  _id: "house", title: "House", category: "property", location: "Kandy",
-  attributes: { propertyType: "house", bedrooms: 3 }, daysAgo: 1,
-});
-const workedListings = [aqua, fit, prius, axio, wagonR, vitz, vezel, dio, apartment, house];
 
-// Aqua: view + contact_seller (repeated views on purpose) = 6 points, Fit: view = 1 point
-const workedInteractions = [
-  { listingId: "aqua", type: "view" },
-  { listingId: "aqua", type: "view" },
-  { listingId: "aqua", type: "contact_seller" },
-  { listingId: "fit", type: "view" },
-];
+describe("getInteractionPoints", () => {
+  test("5 views of the same listing = 3 points (views are capped at 3)", () => {
+    const views = Array.from({ length: 5 }, () => ({ listingId: "x", type: "view" }));
+    expect(getInteractionPoints(views).get("x")).toBe(3);
+  });
 
-describe("getListingPoints", () => {
-  test("10 views + 1 contact on the same listing = 6, not 15", () => {
+  test("each type is capped separately: 5 views + 1 save + 4 contacts = 3 + 3 + 10", () => {
     const interactions = [
-      ...Array.from({ length: 10 }, () => ({ listingId: "x", type: "view" })),
-      { listingId: "x", type: "contact_seller" },
+      ...Array.from({ length: 5 }, () => ({ listingId: "x", type: "view" })),
+      { listingId: "x", type: "save" },
+      ...Array.from({ length: 4 }, () => ({ listingId: "x", type: "contact_seller" })),
     ];
-    expect(getListingPoints(interactions).get("x")).toBe(6);
+    expect(getInteractionPoints(interactions).get("x")).toBe(16);
   });
 
-  test("all three actions on one listing give the maximum of 9", () => {
-    const points = getListingPoints([
-      { listingId: "x", type: "view" },
-      { listingId: "x", type: "save" },
-      { listingId: "x", type: "contact_seller" },
+  test("points are kept per listing", () => {
+    const points = getInteractionPoints([
+      { listingId: "a", type: "view" },
+      { listingId: "b", type: "save" },
     ]);
-    expect(points.get("x")).toBe(9);
+    expect(Object.fromEntries(points)).toEqual({ a: 1, b: 3 });
   });
 });
 
-describe("getListingTags", () => {
-  test("builds category, primary, secondary and location tags", () => {
-    expect(getListingTags(aqua)).toEqual([
-      { type: "category", tag: "category:vehicle", label: "Vehicles" },
-      { type: "primary", tag: "vehicle:make:toyota", label: "Toyota" },
-      { type: "secondary", tag: "vehicle:fuelType:hybrid", label: "Hybrid" },
-      { type: "location", tag: "location:colombo", label: "Colombo" },
-    ]);
+describe("buildProfile", () => {
+  test("keys are trimmed and lowercased", () => {
+    const listing = vehicle("v", " Kandy ", " Toyota ", "HYBRID");
+    const profile = buildProfile([listing], new Map([["v", 1]]));
+    expect(profileAsObject(profile)).toEqual({
+      categories: { vehicle: 1 },
+      locations: { kandy: 1 },
+      attributes: { "vehicle:make:toyota": 1, "vehicle:fueltype:hybrid": 1 },
+    });
   });
 
-  test("a land listing (no bedrooms) gives 3 tags and doesn't crash", () => {
+  test("a land listing (no bedrooms) is skipped for that attribute instead of crashing", () => {
     const land = makeListing({
       _id: "land", title: "Land", category: "property", location: "Gampaha",
       attributes: { propertyType: "land", landPerches: 10 },
     });
-    expect(getListingTags(land).map((t) => t.tag)).toEqual([
-      "category:property",
-      "property:propertyType:land",
-      "location:gampaha",
-    ]);
+    const profile = buildProfile([land], new Map([["land", 3]]));
+    expect(Object.fromEntries(profile.attributes)).toEqual({ "property:propertytype:land": 3 });
+    expect(scoreCandidate(land, profile).score).toBe(3 + 3 + 3);
   });
 
-  test("trims and lowercases values; numbers get a readable label", () => {
+  test("attributes that aren't configured for the category are ignored", () => {
     const listing = makeListing({
-      _id: "p", title: "House", category: "property", location: " Kandy ",
-      attributes: { propertyType: " House ", bedrooms: 3 },
+      _id: "v", title: "v", category: "vehicle", location: "Colombo",
+      attributes: { make: "honda", transmission: "auto" },
     });
-    expect(getListingTags(listing)).toContainEqual(
-      { type: "primary", tag: "property:propertyType:house", label: "House" }
-    );
-    expect(getListingTags(listing)).toContainEqual(
-      { type: "secondary", tag: "property:bedrooms:3", label: "3 bedrooms" }
-    );
-    expect(getListingTags(listing)).toContainEqual(
-      { type: "location", tag: "location:kandy", label: "Kandy" }
-    );
+    const profile = buildProfile([listing], new Map([["v", 1]]));
+    expect(Object.fromEntries(profile.attributes)).toEqual({ "vehicle:make:honda": 1 });
   });
 });
 
-describe("worked example", () => {
-  const profile = buildProfile([aqua, fit], getListingPoints(workedInteractions));
+// The example from the recommendation logic doc (Sections 5 and 9)
+describe("doc example", () => {
+  const apartmentColombo = property("apartment-colombo", "Colombo", "apartment", 2);
+  const apartmentColombo2 = property("apartment-colombo-2", "Colombo", "apartment", 2);
+  const toyotaKandy = vehicle("toyota-kandy", "Kandy", "Toyota", "hybrid");
+  const interactions = [
+    { listingId: "apartment-colombo", type: "view" }, // 1 point
+    { listingId: "apartment-colombo-2", type: "save" }, // 3 points
+    { listingId: "toyota-kandy", type: "view" }, // 1 point
+  ];
+  const profile = buildProfile(
+    [apartmentColombo, apartmentColombo2, toyotaKandy],
+    getInteractionPoints(interactions)
+  );
 
-  test("buildProfile adds each listing's points to all of its tags", () => {
-    expect(Object.fromEntries(profile)).toEqual({
-      "category:vehicle": 7,
-      "vehicle:make:toyota": 6,
-      "vehicle:make:honda": 1,
-      "vehicle:fuelType:hybrid": 7,
-      "location:colombo": 7,
+  const apartmentDehiwala = property("apartment-dehiwala", "Dehiwala", "apartment", 2);
+  const houseKandy = property("house-kandy", "Kandy", "house", 4);
+  const toyotaColombo = vehicle("toyota-colombo", "Colombo", "Toyota", "hybrid");
+
+  test("Section 5: preference profile", () => {
+    expect(profileAsObject(profile)).toEqual({
+      categories: { property: 4, vehicle: 1 },
+      locations: { colombo: 4, kandy: 1 },
+      attributes: {
+        "property:propertytype:apartment": 4,
+        "property:bedrooms:2": 4,
+        "vehicle:make:toyota": 1,
+        "vehicle:fueltype:hybrid": 1,
+      },
     });
   });
 
   test.each([
-    ["Toyota Prius", prius, 26],
-    ["Toyota Axio", axio, 26],
-    ["Suzuki Wagon R", wagonR, 21],
-    ["Toyota Vitz", vitz, 19],
-    ["Honda Vezel", vezel, 16],
-    ["Honda Dio", dio, 9],
-    ["Apartment", apartment, 7],
-    ["House", house, 0],
-  ])("scoreListing: %s scores %i", (title, listing, expected) => {
-    expect(scoreListing(listing, profile).score).toBe(expected);
+    ["Apartment in Dehiwala", apartmentDehiwala, 12],
+    ["House in Kandy", houseKandy, 5],
+    ["Toyota hybrid in Colombo", toyotaColombo, 7],
+  ])("Section 9: %s scores %i", (name, listing, expected) => {
+    expect(scoreCandidate(listing, profile).score).toBe(expected);
   });
 
-  test("the breakdown lists contributors, highest first", () => {
-    expect(scoreListing(prius, profile).breakdown).toEqual([
-      { tag: "vehicle:make:toyota", label: "Toyota", type: "primary", points: 12 },
-      { tag: "category:vehicle", label: "Vehicles", type: "category", points: 7 },
-      { tag: "vehicle:fuelType:hybrid", label: "Hybrid", type: "secondary", points: 7 },
+  test("Section 9: ranked 12, 7, 5", () => {
+    const ranked = rankCandidates([houseKandy, toyotaColombo, apartmentDehiwala], profile);
+    expect(ranked.map((item) => [item.listing._id, item.score])).toEqual([
+      ["apartment-dehiwala", 12],
+      ["toyota-colombo", 7],
+      ["house-kandy", 5],
     ]);
   });
 
-  test("rankForUser gives the expected forYou and others", () => {
-    const { isNewUser, forYou, others } = rankForUser(workedListings, workedInteractions);
-
-    expect(isNewUser).toBe(false);
-    expect(forYou.map((item) => [item.listing.title, item.score])).toEqual([
-      ["Toyota Prius", 26], // ties (Prius/Axio) keep default order: Prius is newer
-      ["Toyota Axio", 26],
-      ["Suzuki Wagon R", 21],
-      ["Toyota Vitz", 19],
-      ["Honda Vezel", 16],
-      ["Honda Dio", 9],
-      ["Apartment", 7],
+  test("every match gets a reason", () => {
+    expect(scoreCandidate(apartmentDehiwala, profile).reasons).toEqual([
+      "Matches preferred category: property",
+      "Matches preferred propertyType: apartment",
+      "Matches preferred bedrooms: 2",
     ]);
-    expect(forYou[0].reason).toBe("Because you showed interest in Toyota");
-    expect(forYou.at(-1).reason).toBe("Because you've been looking in Colombo");
-
-    // House scored 0, so it's in others; touched listings come last with their strongest action
-    expect(others.map((item) => [item.listing.title, item.interacted])).toEqual([
-      ["House", null],
-      ["Toyota Aqua", "contact_seller"],
-      ["Honda Fit", "view"],
+    expect(scoreCandidate(toyotaColombo, profile).reasons).toEqual([
+      "Matches preferred category: vehicle",
+      "Matches preferred location: Colombo",
+      "Matches preferred make: Toyota",
+      "Matches preferred fuelType: hybrid",
     ]);
+  });
+});
+
+describe("rankCandidates", () => {
+  test("equal scores fall back to _id ascending", () => {
+    const profile = buildProfile([vehicle("seen", "Kandy", "toyota", "petrol")], new Map([["seen", 1]]));
+    const ranked = rankCandidates(
+      ["c", "a", "b"].map((_id) => vehicle(_id, "Kandy", "toyota", "petrol")),
+      profile
+    );
+    expect(ranked.map((item) => item.listing._id)).toEqual(["a", "b", "c"]);
   });
 });
 
@@ -178,27 +173,74 @@ describe("getDefaultOrder", () => {
   });
 });
 
-describe("rankForUser edge cases", () => {
-  test("cold start: no interactions gives an empty forYou and the default order", () => {
-    const result = rankForUser(workedListings, []);
+describe("recommendForUser", () => {
+  const ids = (items) => items.map((item) => item.listing._id);
+
+  test("cold start: no interactions gives the full default feed in others", () => {
+    const listings = [vehicle("v", "Kandy", "toyota", "petrol", 1), property("p", "Colombo", "house", 3, 0)];
+    const result = recommendForUser({ interactions: [], interactedListings: [], candidates: listings });
+
     expect(result.isNewUser).toBe(true);
-    expect(result.forYou).toEqual([]);
-    expect(result.others.map((item) => item.listing)).toEqual(getDefaultOrder(workedListings));
-    expect(result.others.every((item) => item.interacted === null)).toBe(true);
+    expect(result.message).toEqual(expect.any(String));
+    expect(result.recommendations).toEqual([]);
+    expect(ids(result.others)).toEqual(["v", "p"]);
   });
 
   test("interactions that only point to deleted listings count as cold start", () => {
-    const result = rankForUser(workedListings, [{ listingId: "deleted", type: "contact_seller" }]);
+    const listings = [vehicle("v", "Kandy", "toyota", "petrol")];
+    const result = recommendForUser({
+      interactions: [{ listingId: "deleted", type: "contact_seller" }],
+      interactedListings: [],
+      candidates: listings,
+    });
     expect(result.isNewUser).toBe(true);
-    expect(result.forYou).toEqual([]);
+    expect(result.recommendations).toEqual([]);
   });
 
-  test(`forYou holds at most ${FOR_YOU_LIMIT} listings`, () => {
-    const many = Array.from({ length: 12 }, (_, i) =>
-      vehicle(`t${i}`, `Toyota ${i}`, "Kandy", "toyota", "petrol", i)
+  test(`at most ${RECOMMENDATION_LIMIT} recommendations; the rest follow in default order, interacted last`, () => {
+    // 12 identical Toyotas, so every candidate scores the same and _id decides the ranking
+    const toyotas = Array.from({ length: 12 }, (_, i) =>
+      vehicle(`t${String(i).padStart(2, "0")}`, "Kandy", "toyota", "petrol", i)
     );
-    const { forYou, others } = rankForUser(many, [{ listingId: "t0", type: "view" }]);
-    expect(forYou).toHaveLength(FOR_YOU_LIMIT);
-    expect(others).toHaveLength(12 - FOR_YOU_LIMIT);
+    const [seen, ...candidates] = toyotas;
+    const result = recommendForUser({
+      interactions: [{ listingId: seen._id, type: "view" }],
+      interactedListings: [seen],
+      candidates,
+    });
+
+    expect(result.isNewUser).toBe(false);
+    expect(result.message).toBeNull();
+    expect(ids(result.recommendations)).toEqual(["t01", "t02", "t03", "t04", "t05", "t06", "t07", "t08"]);
+    expect(ids(result.others)).toEqual(["t09", "t10", "t11", "t00"]);
+  });
+
+  test("a score of 0 isn't recommended: nothing matches, so others holds every listing", () => {
+    const seen = vehicle("seen", "Colombo", "toyota", "hybrid");
+    const sofa = makeListing({
+      _id: "sofa", title: "sofa", category: "furniture", location: "Kandy", attributes: { type: "sofa" },
+    });
+    const result = recommendForUser({
+      interactions: [{ listingId: "seen", type: "save" }],
+      interactedListings: [seen],
+      candidates: [sofa],
+    });
+
+    expect(result.recommendations).toEqual([]);
+    expect(result.message).toEqual(expect.any(String));
+    expect(ids(result.others)).toEqual(["sofa", "seen"]);
+  });
+
+  test("no candidates left: empty recommendations with a message", () => {
+    const seen = vehicle("seen", "Colombo", "toyota", "hybrid");
+    const result = recommendForUser({
+      interactions: [{ listingId: "seen", type: "view" }],
+      interactedListings: [seen],
+      candidates: [],
+    });
+
+    expect(result.recommendations).toEqual([]);
+    expect(result.message).toEqual(expect.any(String));
+    expect(ids(result.others)).toEqual(["seen"]);
   });
 });
