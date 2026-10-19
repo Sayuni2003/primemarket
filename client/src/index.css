@@ -10,7 +10,6 @@
   --on-accent: #ffffff;
   --success: #1a7f37;
   --success-hover: #146c2e;
-  --heart: #e0245e;
   --error: #c62828;
   --error-bg: #fdecea;
   --shadow: rgba(16, 24, 40, 0.08);
@@ -59,8 +58,8 @@ button.primary {
   color: var(--on-accent);
 }
 
-/* Save: just a heart icon, no circle. Grey outline until saved, then filled red */
-button.heart {
+/* Save: just a bookmark icon, no circle. Grey outline until saved, then filled green */
+button.save-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -72,20 +71,20 @@ button.heart {
   color: var(--muted);
 }
 
-button.heart svg {
+button.save-icon svg {
   fill: none;
 }
 
-button.heart:hover:not(:disabled) {
-  color: var(--heart);
+button.save-icon:hover:not(:disabled) {
+  color: var(--success);
 }
 
-button.heart.saved {
-  color: var(--heart);
+button.save-icon.saved {
+  color: var(--success);
   opacity: 1;
 }
 
-button.heart.saved svg {
+button.save-icon.saved svg {
   fill: currentColor;
 }
 
@@ -130,6 +129,7 @@ button.success:hover:not(:disabled) {
 
 .navbar h1 {
   font-size: 1.5rem;
+  color: var(--accent);
 }
 
 .signed-in {
@@ -324,23 +324,6 @@ section h2 {
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--bg);
-}
-
-.reasons {
-  font-size: 0.85rem;
-  padding: 8px;
-  border-radius: 6px;
-  background: var(--accent-soft);
-}
-
-.reasons .score {
-  margin: 0 0 4px;
-  font-weight: 600;
-}
-
-.reasons ul {
-  margin: 0;
-  padding-left: 18px;
 }
 
 /* Image and placeholder share the same size, so cards line up either way */

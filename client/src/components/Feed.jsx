@@ -61,15 +61,13 @@ export default function Feed({ userId }) {
 
   const { isNewUser, message, recommendations, others } = feed;
 
-  // recommendations items are { listing, score, reasons }, others items are just { listing }
+  // recommendations items are { listing, score, reasons }, others are { listing }. Only the listing is shown
   const renderCards = (items) => (
     <div className="grid">
-      {items.map(({ listing, score, reasons }) => (
+      {items.map(({ listing }) => (
         <ListingCard
           key={listing._id}
           listing={listing}
-          score={score}
-          reasons={reasons}
           save={saves[listing._id]}
           onSave={() => saveListing(listing._id)}
           onOpen={() => openListing(listing)}

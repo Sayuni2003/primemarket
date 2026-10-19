@@ -68,7 +68,7 @@ export default function App() {
             {error} <button onClick={loadUsers}>Try again</button>
           </p>
         )}
-        {/* key={user._id} gives every user a fresh Feed: new fetch, no leftover red hearts or open modal */}
+        {/* key={user._id} gives every user a fresh Feed: new fetch, no leftover saved icons or open modal */}
         {!loading && !error && (user ? <Feed key={user._id} userId={user._id} /> : <UserPicker users={users} onSelect={selectUser} />)}
       </main>
     </>

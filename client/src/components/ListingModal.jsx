@@ -65,7 +65,7 @@ export default function ListingModal({ listing, userId, viewError, save, onSave,
                 Seller: <strong>{listing.seller.name}</strong>
               </p>
               <p>
-                Phone: <a href={`tel:${listing.seller.phoneNo.replaceAll(" ", "")}`}>{listing.seller.phoneNo}</a>
+                Phone: <strong>{listing.seller.phoneNo}</strong>
               </p>
             </div>
           )}

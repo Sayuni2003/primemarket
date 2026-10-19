@@ -18,10 +18,10 @@ There's no login. The first screen shows one button per seeded user (Nimal Perer
 
 ### What the page does
 
-- **Feed:** loaded when a user is picked and when you click **Refresh feed**. Saving, viewing or contacting never refetches it, so cards don't move while you're using the page. A user with no activity sees "Fresh picks for you" (the cold-start feed); otherwise "Recommended for you" shows each card's score and reasons, followed by every other listing.
+- **Feed:** loaded when a user is picked and when you click **Refresh feed**. Saving, viewing or contacting never refetches it, so cards don't move while you're using the page. A user with no activity sees "Fresh picks for you" (the cold-start feed); otherwise "Recommended for you" shows the best matches for their activity, followed by every other listing.
 - **Interactions:** each action is a `POST /api/interactions` with `{ userId, listingId, type }`:
   - Clicking a card opens its details and records `view`.
-  - The **heart** button records `save` and turns red.
+  - The **save** (bookmark) icon records `save` and turns green.
   - **Contact Seller** records `contact_seller` and shows the seller's name and phone number.
 - **Images:** a listing without an `imageUrl`, or whose image fails to load (e.g. an expired presigned URL), shows a "No photo" placeholder.
 
