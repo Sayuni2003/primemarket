@@ -13,9 +13,6 @@ export const withImageUrl = async ({ imageKey, ...listing }) => {
   }
 };
 
-export const listingExists = async (id) =>
-  mongoose.isValidObjectId(id) && Boolean(await Listing.exists({ _id: id }));
-
 // GET /api/listings?category=&location=&minPrice=&maxPrice=&q=
 export const getListings = async (req, res) => {
   const { category, location, minPrice, maxPrice, q } = req.query;

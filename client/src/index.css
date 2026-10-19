@@ -1,0 +1,414 @@
+/* Every colour on the page comes from this list: one blue accent, neutrals, and red only for errors */
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --text: #1d2330;
+  --muted: #667085;
+  --border: #e3e6eb;
+  --accent: #1f6feb;
+  --accent-soft: #eef4ff;
+  --on-accent: #ffffff;
+  --success: #1a7f37;
+  --success-hover: #146c2e;
+  --error: #c62828;
+  --error-bg: #fdecea;
+  --shadow: rgba(16, 24, 40, 0.08);
+  --overlay: rgba(0, 0, 0, 0.5);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+/* Save: just a bookmark icon, no circle. Grey outline until saved, then filled green */
+button.save-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+}
+
+button.save-icon svg {
+  fill: none;
+}
+
+button.save-icon:hover:not(:disabled) {
+  color: var(--success);
+}
+
+button.save-icon.saved {
+  color: var(--success);
+  opacity: 1;
+}
+
+button.save-icon.saved svg {
+  fill: currentColor;
+}
+
+button.success {
+  background: var(--success);
+  border-color: var(--success);
+  color: var(--on-accent);
+}
+
+button.success:hover:not(:disabled) {
+  background: var(--success-hover);
+  border-color: var(--success-hover);
+}
+
+/* Layout */
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px 16px 48px;
+}
+
+/* Nav bar: full width, and sticky keeps it pinned to the top of the window while the page scrolls */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 8px var(--shadow);
+}
+
+.navbar-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 12px 16px;
+}
+
+.navbar h1 {
+  font-size: 1.5rem;
+  color: var(--accent);
+}
+
+.signed-in {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.user-name {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-weight: 600;
+}
+
+.user-name .icon {
+  color: var(--accent);
+}
+
+section {
+  margin-bottom: 32px;
+}
+
+section h2 {
+  margin-bottom: 4px;
+}
+
+/* Loading, error and hint text */
+.status,
+.hint {
+  color: var(--muted);
+}
+
+.hint {
+  margin: 0 0 12px;
+}
+
+.error {
+  color: var(--error);
+  background: var(--error-bg);
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin: 8px 0;
+}
+
+/* User picker: a centred card */
+.picker {
+  max-width: 420px;
+  margin: 48px auto;
+  padding: 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px var(--shadow);
+  text-align: center;
+}
+
+.picker h2 {
+  margin-bottom: 4px;
+}
+
+.picker-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 20px 0;
+  text-align: left;
+}
+
+.picker-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.picker-option:hover {
+  border-color: var(--accent);
+}
+
+.picker-option.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+  background: var(--accent-soft);
+}
+
+/* The radio circle is hidden (the whole row shows the selection) but still reachable by keyboard */
+.picker-option input {
+  position: absolute;
+  opacity: 0;
+}
+
+.picker-option:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.picker button[type="submit"] {
+  width: 100%;
+  padding: 0.7rem;
+  font-size: 1rem;
+}
+
+.picker button[type="submit"]:disabled {
+  opacity: 0.45;
+}
+
+/* Feed */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+/* Listing card */
+.card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.card:hover {
+  border-color: var(--accent);
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  flex: 1;
+}
+
+.card h3 {
+  font-size: 1rem;
+}
+
+.card .save {
+  margin-top: auto;
+}
+
+.meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.price {
+  margin: 0;
+  font-weight: 600;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chips li {
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg);
+}
+
+/* Image and placeholder share the same size, so cards line up either way */
+.image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* Modal */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20; /* above the sticky nav bar */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: var(--overlay);
+}
+
+.modal {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  max-height: 100%;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: 10px;
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+}
+
+.close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.details {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 16px;
+  margin: 8px 0;
+}
+
+.details dt {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.details dd {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.seller {
+  padding: 12px;
+  border-radius: 6px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+}
+
+.seller p {
+  margin: 0 0 4px;
+}

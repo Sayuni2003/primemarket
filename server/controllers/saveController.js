@@ -1,24 +1,6 @@
 import mongoose from "mongoose";
 import Interaction from "../models/Interaction.js";
-import { withImageUrl, listingExists } from "./listingController.js";
-
-// POST /api/listings/:id/save - idempotent, so a double click still leaves one save
-export const saveListing = async (req, res) => {
-  const listingId = req.params.id;
-  if (!(await listingExists(listingId))) {
-    return res.status(404).json({ message: "Listing not found" });
-  }
-
-  const save = { userId: req.user._id, listingId, type: "save" };
-  try {
-    // $setOnInsert keeps the original createdAt when the listing is already saved
-    await Interaction.updateOne(save, { $setOnInsert: save }, { upsert: true });
-  } catch (err) {
-    // Two concurrent upserts can race; the unique index rejects the second, which is still "saved"
-    if (err.code !== 11000) throw err;
-  }
-  res.json({ listingId, saved: true });
-};
+import { withImageUrl } from "./listingController.js";
 
 // DELETE /api/listings/:id/save - idempotent, unsaving twice is fine
 export const unsaveListing = async (req, res) => {
