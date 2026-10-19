@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { recordInteraction } from "../controllers/interactionController.js";
-import { requireUser } from "../middleware/currentUser.js";
 
 const router = Router();
 
-router.post("/", requireUser, recordInteraction);
+// userId comes in the request body, validated by the controller
+router.post("/", recordInteraction);
 
 export default router;
