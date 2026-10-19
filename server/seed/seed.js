@@ -5,6 +5,17 @@ import User from "../models/User.js";
 import Listing from "../models/Listing.js";
 import { users } from "./data/users.js";
 import { listings } from "./data/listings.js";
+import { IMAGES_DIR, imageKeyFor, listImageFiles } from "../config/images.js";
+
+// A key with no matching file would never be uploaded, so its image would always fail to load
+const warnMissingImages = () => {
+  const available = new Set(listImageFiles().map(imageKeyFor));
+  for (const { title, imageKey } of listings) {
+    if (imageKey && !available.has(imageKey)) {
+      console.warn(`Warning: "${title}" uses ${imageKey}, but that file isn't in ${IMAGES_DIR}`);
+    }
+  }
+};
 
 // Upserts by _id, so re-running updates the seed data without touching anything else
 const upsertAll = async (Model, docs) => {
@@ -17,6 +28,7 @@ const upsertAll = async (Model, docs) => {
 };
 
 const seed = async () => {
+  warnMissingImages();
   await upsertAll(User, users);
   await upsertAll(Listing, listings);
 };

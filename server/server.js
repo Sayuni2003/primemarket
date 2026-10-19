@@ -1,6 +1,9 @@
 import "dotenv/config";
 import app from "./app.js";
 import { connectDB } from "./config/db.js";
+import { AWS_ENV_VARS, requireEnv } from "./config/env.js";
+
+requireEnv(["MONGO_URI", ...AWS_ENV_VARS]);
 
 const PORT = process.env.PORT || 5000;
 

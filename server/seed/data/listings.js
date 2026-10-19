@@ -2,7 +2,10 @@
 // Attribute values are lowercase so the recommendation logic can match them reliably.
 // Matching keys per category: vehicle → make, property → propertyType,
 // electronics → brand, furniture → type.
-// Only 5 listings have an imageKey (3 vehicles, 2 properties).
+// Only 5 listings have an image (3 vehicles, 2 properties). Each filename must match a
+// file in scripts/images/, which npm run upload:images puts at listings/<filename>.
+
+import { imageKeyFor } from "../../config/images.js";
 
 const sellers = {
   kamal: { sellerId: "s1", name: "Kamal Perera", phoneNo: "077 000 0101" },
@@ -30,7 +33,7 @@ const listingData = [
       { key: "transmission", value: "automatic" },
       { key: "mileageKm", value: 72000 },
     ],
-    imageKey: "listings/vehicle-toyota-aqua.jpg",
+    imageKey: imageKeyFor("vehicle-toyota-aqua.jpg"),
     seller: sellers.kamal,
   },
   {
@@ -61,7 +64,7 @@ const listingData = [
       { key: "transmission", value: "automatic" },
       { key: "mileageKm", value: 98000 },
     ],
-    imageKey: "listings/vehicle-toyota-prius.jpg",
+    imageKey: imageKeyFor("vehicle-toyota-prius.jpg"),
     seller: sellers.nuwan,
   },
   {
@@ -92,7 +95,7 @@ const listingData = [
       { key: "transmission", value: "automatic" },
       { key: "mileageKm", value: 81000 },
     ],
-    imageKey: "listings/vehicle-honda-fit.jpg",
+    imageKey: imageKeyFor("vehicle-honda-fit.jpg"),
     seller: sellers.ishara,
   },
   {
@@ -183,7 +186,7 @@ const listingData = [
       { key: "bathrooms", value: 2 },
       { key: "sizeSqft", value: 1800 },
     ],
-    imageKey: "listings/property-house-nugegoda.jpg",
+    imageKey: imageKeyFor("property-house-nugegoda.jpg"),
     seller: sellers.dilani,
   },
   {
@@ -197,7 +200,7 @@ const listingData = [
       { key: "bathrooms", value: 2 },
       { key: "sizeSqft", value: 1250 },
     ],
-    imageKey: "listings/property-apartment-colombo.jpg",
+    imageKey: imageKeyFor("property-apartment-colombo.jpg"),
     seller: sellers.shalini,
   },
   {
