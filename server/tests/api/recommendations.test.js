@@ -41,6 +41,8 @@ const record = (user, title, type) =>
 
 const getFeed = (user) => request(app).get("/api/recommendations").query({ userId: String(user._id) }).expect(200);
 
+const scores = (feed) => feed.recommendations.map((item) => [item.listing.title, item.score]);
+
 describe("GET /api/recommendations - validation", () => {
   test("400 when userId is missing or invalid", async () => {
     await request(app).get("/api/recommendations").expect(400);
@@ -58,14 +60,14 @@ describe("cold start", () => {
 
     expect(body.userId).toBe(String(userA._id));
     expect(body.isNewUser).toBe(true);
-    expect(body.forYou).toEqual([]);
+    expect(body.message).toEqual(expect.any(String));
+    expect(body.recommendations).toEqual([]);
     // Newest per category, interleaved vehicle → property → electronics → furniture
     expect(body.others.map((item) => item.listing.title)).toEqual([
       "Toyota Aqua", "Apartment Colombo", "iPhone", "Teak Sofa",
       "Toyota Prius", "Apartment Dehiwala",
       "Honda Fit", "House Kandy",
     ]);
-    expect(body.others.every((item) => item.interacted === null)).toBe(true);
     // No S3 in tests, so every listing gets imageUrl: null
     expect(body.others.every((item) => item.listing.imageUrl === null)).toBe(true);
   });
@@ -81,8 +83,8 @@ describe("user-specific recommendations and isolation", () => {
     const bAfter = (await getFeed(userB)).body;
 
     expect(a.isNewUser).toBe(false);
-    expect(a.forYou[0].listing.category).toBe("vehicle");
-    expect(bAfter.forYou[0].listing.category).toBe("property");
+    expect(a.recommendations[0].listing.category).toBe("vehicle");
+    expect(bAfter.recommendations[0].listing.category).toBe("property");
 
     // A's activity changed nothing in B's feed
     expect(bAfter).toEqual(bBefore);
@@ -90,28 +92,33 @@ describe("user-specific recommendations and isolation", () => {
 });
 
 describe("repeated interactions", () => {
-  test("10 views of a listing score the same as 1 view", async () => {
-    for (let i = 0; i < 10; i++) await record(userA, "Toyota Aqua", "view");
+  test("5 views of a listing count as 3 points (the view cap)", async () => {
+    for (let i = 0; i < 5; i++) await record(userA, "Toyota Aqua", "view");
     await record(userB, "Toyota Aqua", "view");
 
     const a = (await getFeed(userA)).body;
     const b = (await getFeed(userB)).body;
 
-    expect(a.forYou.length).toBeGreaterThan(0);
-    expect(a.forYou.map((item) => [item.listing.title, item.score])).toEqual(
-      b.forYou.map((item) => [item.listing.title, item.score])
-    );
+    // Toyota Prius matches category, make and fuelType: 3 × 3 points for A, 3 × 1 point for B
+    const prius = (feed) => feed.recommendations.find((item) => item.listing.title === "Toyota Prius");
+    expect(prius(a).score).toBe(9);
+    expect(prius(b).score).toBe(3);
+    // Every score is exactly 3× the single-view score, not 5×
+    expect(scores(a)).toEqual(scores(b).map(([title, score]) => [title, score * 3]));
   });
 
-  test("a listing the user interacted with never appears in their own forYou", async () => {
+  test("an interacted listing is never recommended and is listed last in others", async () => {
     await record(userA, "Toyota Aqua", "view");
     await record(userA, "Toyota Aqua", "save");
 
     const { body } = await getFeed(userA);
     const aquaId = String(byTitle["Toyota Aqua"]._id);
 
-    expect(body.forYou.some((item) => item.listing._id === aquaId)).toBe(false);
-    // It's shown at the end of others, badged with the strongest action
-    expect(body.others.at(-1)).toMatchObject({ listing: { _id: aquaId }, interacted: "save" });
+    expect(body.recommendations.some((item) => item.listing._id === aquaId)).toBe(false);
+    expect(body.others.at(-1).listing._id).toBe(aquaId);
+    // Recommendations and others together show every listing exactly once
+    const shown = [...body.recommendations, ...body.others].map((item) => item.listing._id);
+    expect(new Set(shown).size).toBe(fixtures.length);
+    expect(shown).toHaveLength(fixtures.length);
   });
 });

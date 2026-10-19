@@ -1,7 +1,6 @@
 // 30 fictional listings for the PrimeMarket personalised feed.
-// Attribute values are lowercase so the recommendation logic can match them reliably.
-// Matching keys per category: vehicle → make, property → propertyType,
-// electronics → brand, furniture → type.
+// Attribute values are lowercase; the recommendation logic also lowercases them before matching.
+// The attributes it compares per category are set in MATCHING_ATTRIBUTES (config/recommendation.js).
 // Only 5 listings have an image (3 vehicles, 2 properties). Each filename must match a
 // file in scripts/images/, which npm run upload:images puts at listings/<filename>.
 

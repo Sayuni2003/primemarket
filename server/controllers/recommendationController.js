@@ -14,7 +14,7 @@ export const getRecommendationsForUser = async (req, res) => {
     return res.status(404).json({ message: "User not found" });
   }
 
-  const { isNewUser, forYou, others } = await getRecommendations(userId);
+  const { isNewUser, message, recommendations, others } = await getRecommendations(userId);
 
   // withImageUrl swaps each listing's S3 imageKey for a presigned imageUrl (null when there's no image)
   const withImage = async (item) => ({ ...item, listing: await withImageUrl(item.listing) });
@@ -22,7 +22,8 @@ export const getRecommendationsForUser = async (req, res) => {
   res.json({
     userId,
     isNewUser,
-    forYou: await Promise.all(forYou.map(withImage)),
+    message,
+    recommendations: await Promise.all(recommendations.map(withImage)),
     others: await Promise.all(others.map(withImage)),
   });
 };
