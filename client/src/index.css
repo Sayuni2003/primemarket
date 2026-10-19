@@ -1,0 +1,304 @@
+/* Colours used across the page */
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --text: #1d2330;
+  --muted: #667085;
+  --border: #e3e6eb;
+  --accent: #1f6feb;
+  --success: #1a7f37;
+  --error: #c62828;
+  --error-bg: #fdecea;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+button.saved {
+  color: var(--success);
+  border-color: var(--success);
+  opacity: 1;
+}
+
+/* Layout */
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 16px 48px;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.signed-in {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+section {
+  margin-bottom: 32px;
+}
+
+section h2 {
+  margin-bottom: 4px;
+}
+
+/* Loading, error and hint text */
+.status,
+.hint {
+  color: var(--muted);
+}
+
+.hint {
+  margin: 0 0 12px;
+}
+
+.error {
+  color: var(--error);
+  background: var(--error-bg);
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin: 8px 0;
+}
+
+/* User picker */
+.picker {
+  text-align: center;
+  padding: 48px 0;
+}
+
+.picker-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.picker-buttons button {
+  padding: 0.8rem 1.6rem;
+  font-size: 1.05rem;
+}
+
+/* Feed */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+/* Listing card */
+.card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.card:hover {
+  border-color: var(--accent);
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  flex: 1;
+}
+
+.card h3 {
+  font-size: 1rem;
+}
+
+.card .save {
+  margin-top: auto;
+}
+
+.meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.price {
+  margin: 0;
+  font-weight: 600;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chips li {
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg);
+}
+
+.reasons {
+  font-size: 0.85rem;
+  padding: 8px;
+  border-radius: 6px;
+  background: #eef4ff;
+}
+
+.reasons .score {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+
+.reasons ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+/* Image and placeholder share the same size, so cards line up either way */
+.image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e9ecf1;
+  color: var(--muted);
+}
+
+/* Modal */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.modal {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  max-height: 100%;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: 10px;
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+}
+
+.close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.details {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 16px;
+  margin: 8px 0;
+}
+
+.details dt {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.details dd {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.seller {
+  padding: 12px;
+  border-radius: 6px;
+  background: #e8f5ec;
+}
+
+.seller p {
+  margin: 0 0 4px;
+}

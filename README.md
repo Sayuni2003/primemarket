@@ -1,5 +1,32 @@
 # primemarket
 
+## Running the frontend
+
+The frontend is a React app in [`client/`](client/) (Vite, plain JavaScript and CSS, axios for HTTP). Start the backend first (see [Run it](#4-run-it) below), then in a second terminal:
+
+```bash
+cd client
+npm install
+npm run dev
+```
+
+Open http://localhost:5173. Vite forwards every `/api` request to the backend on `http://localhost:5000` (the proxy in [`client/vite.config.js`](client/vite.config.js)), so the browser only talks to one origin and there are no CORS issues. No `.env` is needed. If you change `PORT` in `server/.env`, change the proxy target too.
+
+### Switching users
+
+There's no login. The first screen shows one button per seeded user (Nimal Perera, Ayesha Fernando). The picked user's id is stored in `localStorage`, so it's still selected after closing and reopening the browser. Click **Switch user** in the header to clear it and pick someone else.
+
+### What the page does
+
+- **Feed:** loaded when a user is picked and when you click **Refresh feed**. Saving, viewing or contacting never refetches it, so cards don't move while you're using the page. A user with no activity sees "Fresh picks for you" (the cold-start feed); otherwise "Recommended for you" shows each card's score and reasons, followed by every other listing.
+- **Interactions:** each action is a `POST /api/interactions` with `{ userId, listingId, type }`:
+  - Clicking a card opens its details and records `view`.
+  - **Save** records `save` and shows "Saved ✓".
+  - **Contact Seller** records `contact_seller` and shows the seller's name and phone number.
+- **Images:** a listing without an `imageUrl`, or whose image fails to load (e.g. an expired presigned URL), shows a "No photo" placeholder.
+
+All API calls live in [`client/src/api.js`](client/src/api.js). Errors show the backend's `message`, or "Backend not reachable — is the server running?" when the backend doesn't answer.
+
 ## Recommendation logic
 
 `GET /api/recommendations?userId=…` returns `{ userId, isNewUser, message, recommendations, others }`.
