@@ -77,8 +77,8 @@ describe("buildProfile", () => {
   });
 });
 
-// The example from the recommendation logic doc (Sections 5 and 9)
-describe("doc example", () => {
+// The worked example in the README (Recommendation logic, section 6): both of its tables are checked here
+describe("README section 6: worked example", () => {
   const apartmentColombo = property("apartment-colombo", "Colombo", "apartment", 2);
   const apartmentColombo2 = property("apartment-colombo-2", "Colombo", "apartment", 2);
   const toyotaKandy = vehicle("toyota-kandy", "Kandy", "Toyota", "hybrid");
@@ -96,7 +96,7 @@ describe("doc example", () => {
   const houseKandy = property("house-kandy", "Kandy", "house", 4);
   const toyotaColombo = vehicle("toyota-colombo", "Colombo", "Toyota", "hybrid");
 
-  test("Section 5: preference profile", () => {
+  test("profile table: category, location and attribute points", () => {
     expect(profileAsObject(profile)).toEqual({
       categories: { property: 4, vehicle: 1 },
       locations: { colombo: 4, kandy: 1 },
@@ -109,15 +109,16 @@ describe("doc example", () => {
     });
   });
 
+  // Named fields so the title can use $name and $expected (positional %i would pick up the listing object)
   test.each([
-    ["Apartment in Dehiwala", apartmentDehiwala, 12],
-    ["House in Kandy", houseKandy, 5],
-    ["Toyota hybrid in Colombo", toyotaColombo, 7],
-  ])("Section 9: %s scores %i", (name, listing, expected) => {
+    { name: "Apartment in Dehiwala", listing: apartmentDehiwala, expected: 12 },
+    { name: "House in Kandy", listing: houseKandy, expected: 5 },
+    { name: "Toyota hybrid in Colombo", listing: toyotaColombo, expected: 7 },
+  ])("candidate table: $name scores $expected", ({ listing, expected }) => {
     expect(scoreCandidate(listing, profile).score).toBe(expected);
   });
 
-  test("Section 9: ranked 12, 7, 5", () => {
+  test("candidate table: ranked 12, 7, 5", () => {
     const ranked = rankCandidates([houseKandy, toyotaColombo, apartmentDehiwala], profile);
     expect(ranked.map((item) => [item.listing._id, item.score])).toEqual([
       ["apartment-dehiwala", 12],

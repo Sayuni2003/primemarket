@@ -103,7 +103,7 @@ The user viewed an apartment in Colombo (1 point), saved another apartment in Co
 | Toyota hybrid, Colombo | 1 | 4 | 1 + 1 | **7** |
 | House, Kandy, 4 bedrooms | 4 | 1 | 0 | **5** |
 
-This exact example is checked by the unit tests.
+This exact example (both tables) is checked by the unit tests under "README section 6: worked example" in [`server/tests/unit/recommendationScoring.test.js`](server/tests/unit/recommendationScoring.test.js).
 
 ### 7. Trade-offs and possible improvements
 
