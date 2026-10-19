@@ -81,6 +81,76 @@ This exact example is checked by the unit tests.
 - **Weights are hand-picked**: they could instead be calculated from how rare each tag is (IDF), so a rare match counts more than a common one.
 - **Recomputed per request**: every listing's tags and score are rebuilt on each request. That's fine at this size but would need caching or precomputed tags for thousands of listings.
 
+## AWS S3 setup
+
+Listing images live in a **private** S3 bucket. MongoDB stores only each image's object key (e.g. `listings/vehicle-toyota-aqua.jpg`), and the API turns it into a short-lived presigned URL on every request.
+
+### 1. Create the bucket
+
+In the S3 console, create a bucket in your region with **Block all public access** turned **on** (the default), ACLs disabled and default SSE-S3 encryption. No bucket policy or CORS configuration is needed.
+
+### 2. Create an IAM user for the app
+
+In IAM, create a user with **no console access**, attach this policy (replace `YOUR-BUCKET`), then create an access key for it under *Security credentials → Access keys*:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadWriteListingImages",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject"],
+      "Resource": "arn:aws:s3:::YOUR-BUCKET/*"
+    },
+    {
+      "Sid": "ListBucket",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::YOUR-BUCKET"
+    }
+  ]
+}
+```
+
+Object actions (`GetObject`, `PutObject`) apply to `YOUR-BUCKET/*` (the objects), while `ListBucket` applies to the bucket itself. Without `ListBucket`, S3 answers a request for a missing object with `AccessDenied` instead of a clear `NoSuchKey`.
+
+### 3. Fill in `server/.env`
+
+Copy [`server/.env.example`](server/.env.example) to `server/.env` and fill in:
+
+| Variable | Value |
+|---|---|
+| `AWS_REGION` | The bucket's region, e.g. `us-east-1` |
+| `AWS_ACCESS_KEY_ID` | The IAM user's access key ID |
+| `AWS_SECRET_ACCESS_KEY` | The IAM user's secret access key |
+| `AWS_S3_BUCKET` | The bucket name |
+
+`.env` is git-ignored. The server and the upload script refuse to start if any of these (or `MONGO_URI`) is missing, and name the missing ones.
+
+### 4. Run it
+
+Put the listing images (under 1 MB each, `.jpg`/`.jpeg`/`.png`/`.webp`) in `server/scripts/images/`. The seed expects `vehicle-toyota-aqua.jpg`, `vehicle-toyota-prius.jpg`, `vehicle-honda-fit.jpg`, `property-house-nugegoda.jpg` and `property-apartment-colombo.jpg`, and warns about any that are missing.
+
+```bash
+cd server
+npm install
+npm run upload:images   # uploads each file to listings/<filename>; safe to re-run (overwrites)
+npm run seed
+npm run dev
+```
+
+`GET /api/recommendations?userId=…`, `GET /api/listings` and `GET /api/listings/:id` return an `imageUrl` for each listing (or `null` if it has no image).
+
+### Design decisions
+
+- **Private bucket:** nobody can load an image just by guessing its URL, and every access goes through credentials the backend controls.
+- **Presigned URLs:** the backend signs a URL with its secret key that grants read access to one object for a limited time. The browser loads the image straight from S3, so images never pass through the Express server, and the frontend never sees any credentials. Signing is done locally and doesn't call AWS.
+- **Only keys in MongoDB:** presigned URLs expire, so a stored URL would turn into a broken image after 5 minutes. A key never expires, and a fresh URL is generated on each request. It also means a different bucket, region or CDN only needs a config change, not a data migration.
+- **Least-privilege IAM user:** the app can only read and write objects in this one bucket and list it. It can't delete objects, change bucket settings or touch any other AWS service, so a leaked key can do very little damage. It has no console password because it's only used by code.
+- **5-minute expiry (`URL_EXPIRY_SECONDS` in [`server/services/s3.js`](server/services/s3.js)):** long enough for the page to load its images, short enough that a copied or leaked link soon stops working. When a URL has expired, the frontend should show a placeholder (e.g. from the `<img>` `onError` handler).
+- **One bad image doesn't break the feed:** if signing fails for a listing, it's returned with `imageUrl: null` and the error is logged on the server.
+
 ### Running the tests
 
 ```bash

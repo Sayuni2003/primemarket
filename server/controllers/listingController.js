@@ -1,12 +1,17 @@
 import mongoose from "mongoose";
 import Listing, { LISTING_CATEGORIES } from "../models/Listing.js";
-import { getImageUrl } from "../config/s3.js";
+import { getImageUrl } from "../services/s3.js";
 
-// Swap the stored S3 key for a short-lived URL the browser can load
-export const withImageUrl = async ({ imageKey, ...listing }) => ({
-  ...listing,
-  imageUrl: await getImageUrl(imageKey),
-});
+// Swap the stored S3 key for a short-lived URL the browser can load.
+// A failure only costs that listing its image (imageUrl: null), never the whole response
+export const withImageUrl = async ({ imageKey, ...listing }) => {
+  try {
+    return { ...listing, imageUrl: await getImageUrl(imageKey) };
+  } catch (err) {
+    console.error(`Could not sign image for listing ${listing._id}: ${err.message}`);
+    return { ...listing, imageUrl: null };
+  }
+};
 
 export const listingExists = async (id) =>
   mongoose.isValidObjectId(id) && Boolean(await Listing.exists({ _id: id }));
