@@ -10,6 +10,7 @@
   --on-accent: #ffffff;
   --success: #1a7f37;
   --success-hover: #146c2e;
+  --heart: #e0245e;
   --error: #c62828;
   --error-bg: #fdecea;
   --shadow: rgba(16, 24, 40, 0.08);
@@ -58,11 +59,34 @@ button.primary {
   color: var(--on-accent);
 }
 
-button.saved {
-  color: var(--accent);
-  border-color: var(--accent);
-  background: var(--accent-soft);
+/* Save: just a heart icon, no circle. Grey outline until saved, then filled red */
+button.heart {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+}
+
+button.heart svg {
+  fill: none;
+}
+
+button.heart:hover:not(:disabled) {
+  color: var(--heart);
+}
+
+button.heart.saved {
+  color: var(--heart);
   opacity: 1;
+}
+
+button.heart.saved svg {
+  fill: currentColor;
 }
 
 button.success {
